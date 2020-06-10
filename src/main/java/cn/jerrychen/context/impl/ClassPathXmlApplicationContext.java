@@ -1,9 +1,8 @@
 package cn.jerrychen.context.impl;
 
-import cn.jerrychen.annotation.Autowired;
-import cn.jerrychen.annotation.Repository;
-import cn.jerrychen.annotation.Service;
+import cn.jerrychen.annotation.*;
 import cn.jerrychen.context.ApplicationContext;
+import cn.jerrychen.emum.AspectEnum;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -12,6 +11,9 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.File;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -34,7 +36,7 @@ public class ClassPathXmlApplicationContext implements ApplicationContext {
         classesUrl = url.getPath().substring(0, url.getPath().lastIndexOf("target")) + "target/classes/";
         String scanPackageName = getScanPackage(fileName);
         String path = classesUrl + scanPackageName.replace(".", "/");
-
+        //扫描所有包
         doScan(path, classesUrl);
         //获得所有加了注解的value值,并实例化加入objMap进行统一管理
         for (String c : classes) {
@@ -56,7 +58,32 @@ public class ClassPathXmlApplicationContext implements ApplicationContext {
                     f.set(obj, getBean(f.getType()));
                 }
             }
+
+            //AOP动态代理
+            if (isAopAutoProxy) {
+                //判断是否类是否被Aspect注解
+                if (obj.getClass().isAnnotationPresent(Aspect.class)) {
+                    Method[] methods = obj.getClass().getDeclaredMethods();
+                    for (Method method : methods) {
+                        //判断方法是否被before注解
+                        if (method.isAnnotationPresent(Before.class)) {
+                            String targetName = method.getDeclaredAnnotation(Before.class).value();
+                            targetName = targetName.substring(0, targetName.lastIndexOf("."));
+                            Object target = getBean(targetName);
+                            //通过枚举策略模式实现jdk动态代理接口返回一个代理对象
+                            Object proxyObj = AspectEnum.before.newProxyInstance(target, obj, method);
+                            //将增强后的方法覆盖原方法
+                            objMap.put(targetName,proxyObj);
+                        }
+                    }
+
+                }
+
+            }
+
         }
+
+
     }
 
     private void doScan(String path, String projRootPath) {
@@ -97,6 +124,7 @@ public class ClassPathXmlApplicationContext implements ApplicationContext {
             }
             //通过rootElement标签获得子标签
             NodeList nodeList = rootElement.getElementsByTagName("component-scan");
+            isAopAutoProxy = rootElement.getElementsByTagName("aspectj-autoproxy") != null;
             if (nodeList == null) {
                 return null;
             }

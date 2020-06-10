@@ -3,4 +3,8 @@
 
     <component-scan base-package="cn.jerrychen"></component-scan>
 
+
+    <!--声明自动为spring容器中那些配置@aspectJ切面的bean创建代理，织入切面-->
+    <aspectj-autoproxy/>
+
 </beans>
