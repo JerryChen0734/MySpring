@@ -53,6 +53,8 @@ public enum AspectEnum implements ProxyInstance {
 ```
 ### 调用
 ```
+      //通过if else方法调用 接口还需要再传一个增强类型过去
+      Object proxyObj = ProxyFactory.newProxyInstance(targetObj,AspectEnum.before, aspectObj, aspectMeth);
       //通过枚举策略模式实现jdk动态代理接口返回一个代理对象
-      Object proxyObj = AspectEnum.before.newProxyInstance(target, obj, method);
+      Object proxyObj = AspectEnum.before.newProxyInstance(targetObj,aspectObj,aspectMeth);
 ```
